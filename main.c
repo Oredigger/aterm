@@ -416,7 +416,7 @@ void tokenize(char *str)
         return;
     }
 
-    const char  *list_of_ops = "\%^=-+*\\/<>";
+    const char  *list_of_ops = "%%^=-+*\\/<>";
 
     gen_stack_t    *tokens = NULL;
     gen_stack_t *head_node = NULL;
