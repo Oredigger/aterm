@@ -138,7 +138,8 @@ typedef enum val_type val_type_t;
 enum val_type
 {
     TOKEN_T, 
-    UINT8_T, 
+    UINT8_T,
+    DOUBLE,
     UNKNOWN
 };
 
@@ -160,6 +161,7 @@ struct gen_stack
     {
         token_t token_val;
         uint8_t uint8_val;
+        double   doub_val;
     };
 
     val_type_t type;
@@ -198,6 +200,8 @@ gen_stack_err_t push_to_gen_stack(gen_stack_t **head_node, void *val_ptr, val_ty
             case UINT8_T:
                 new_node->uint8_val = *((uint8_t *) val_ptr);
                 break;
+            case DOUBLE:
+                new_node->doub_val  = *((double *)  val_ptr);
             default:
                 new_node->type = UNKNOWN;
                 break;
@@ -230,6 +234,9 @@ gen_stack_err_t peek_gen_stack(gen_stack_t *head_node, void *val_ptr, val_type_t
             break;
         case UINT8_T:
             *((uint8_t *) val_ptr) = head_node->uint8_val;
+            break;
+        case DOUBLE:
+            *((double *)  val_ptr) = head_node->doub_val;
             break;   
         default:
             break;
@@ -358,6 +365,71 @@ char *get_stdin(gen_stack_t **head_node)
     return str;
 }
 
+bool is_digit(char *r_str)
+{
+    if (!r_str)
+    {
+        return false;    
+    }
+    
+    bool  result = true;
+
+    if (*r_str == '-' || *r_str == '+')
+    {
+        result = !(*(r_str + 1) == 'e');
+        r_str++;
+    }
+    
+    bool pt_flag = false;
+    bool ex_flag = false;
+
+    while (*r_str && result)
+    {            
+        if ((*r_str == '.' &&  pt_flag) || 
+            (*r_str == 'e' &&  ex_flag) ||
+            (*r_str != '.' && *r_str != 'e' && !isdigit(*r_str)))
+        {
+            result = false;
+        }
+        else if (*r_str == '.' && 
+                 !pt_flag)
+        {
+            pt_flag = true;
+            result = !(*(r_str + 1) == 0);
+        }
+        else if (*r_str == 'e' && 
+                 !ex_flag)
+        {
+            ex_flag = true;
+            
+            if (*(r_str + 1) == '-' || 
+                *(r_str + 1) == '+')
+            {
+                r_str += 1;
+            } 
+            
+            result = !(*(r_str + 1) == 0);
+        }
+        
+        r_str++;
+    }
+
+    return result;
+}
+
+bool is_keyword(char *str)
+{
+    if (!str)
+    {
+        return false;
+    }
+
+    return strcmp(str, "num") == 0 ||
+           strcmp(str, "run") == 0 ||
+           strcmp(str, "rdn") == 0 ||
+           strcmp(str, "tim") == 0;
+}
+
 bool is_valid_var_name(char *str)
 {
     if (!str)
@@ -380,19 +452,6 @@ bool is_valid_var_name(char *str)
     }
 
     return !violate;
-}
-
-bool is_keyword(char *str)
-{
-    if (!str)
-    {
-        return false;
-    }
-
-    return strcmp(str, "num") == 0 ||
-           strcmp(str, "run") == 0 ||
-           strcmp(str, "rdn") == 0 ||
-           strcmp(str, "tim") == 0;
 }
 
 void token_push(gen_stack_t **tokens_node, char *str, token_id_t token_id)
@@ -496,6 +555,35 @@ gen_stack_t *tokenize(char *str)
     return tokens_node;
 }
 
+void reverse_polish_notation(gen_stack_t **tokens_node)
+{
+    if (!tokens_node || !*tokens_node)
+    {
+        return;
+    }
+
+    // Shunting yard algorithm will be used to convert the stack into reverse polish
+    // notation.
+
+
+}
+
+void print_stack(gen_stack_t **tokens_node)
+{
+    if (!tokens_node || !*tokens_node)
+    {
+        return;
+    }
+
+    while (*tokens_node)
+    {
+        token_t tmp;
+        pop_one_gen_stack(tokens_node, &tmp, TOKEN_T);
+        print_token_t(&tmp);
+        free_token_t(&tmp);
+    }
+}
+
 int main(void)
 {
     bool quit_flag = false;
@@ -505,15 +593,9 @@ int main(void)
     {
         printf("andy> ");
         char *resp = get_stdin(&head_node);
+        
         gen_stack_t *tokens_node = tokenize(resp);
-
-        while (tokens_node)
-        {
-            token_t tmp;
-            pop_one_gen_stack(&tokens_node, &tmp, TOKEN_T);
-            print_token_t(&tmp);
-            free_token_t(&tmp);
-        }
+        print_stack(&tokens_node);
 
         quit_flag = resp && (strcmp(resp, "quit") == 0);
         free(resp);
@@ -522,13 +604,3 @@ int main(void)
     free_gen_stack(&head_node);
     return 0;
 }
-
-/*
-    while (tokens_node)
-    {
-        token_t tmp;
-        pop_one_gen_stack(&tokens_node, &tmp, TOKEN_T);
-        print_token_t(&tmp);
-        free_token_t(&tmp);
-    }
- */
