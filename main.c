@@ -334,13 +334,11 @@ char *get_stdin(gen_stack_t **head_node)
     }
 
     gen_stack_err_t err = CS_NO_ERROR;
-    
     bool status = true;
-    uint8_t val = 0;
 
     while (status)
     {
-        val = fgetc(stdin);
+        int val = fgetc(stdin);
 
         if (val != EOF && val != '\n')
         {
