@@ -334,28 +334,25 @@ char *get_stdin(gen_stack_t **head_node)
     }
 
     gen_stack_err_t err = CS_NO_ERROR;
-    bool status = true;
+    char *str = NULL;
 
-    while (status)
+    while (true)
     {
         int val = fgetc(stdin);
 
         if (val != EOF && val != '\n')
         {
             err = push_to_gen_stack(head_node, &val, UINT8_T);
-            status = (err == CS_NO_ERROR);
         }
         else
         {
-            status = 0;
+            if (err == CS_NO_ERROR)
+            {
+                to_string(head_node, &str);
+            }
+            
+            break;
         }
-    }
- 
-    char *str = NULL;
-
-    if (err == CS_NO_ERROR)
-    {
-        to_string(head_node, &str);
     }
 
     return str;
@@ -398,65 +395,90 @@ bool is_keyword(char *str)
            strcmp(str, "tim") == 0;
 }
 
-void token_push(gen_stack_t **tokens, char *str, token_id_t token_id)
+void token_push(gen_stack_t **tokens_node, char *str, token_id_t token_id)
 {
     token_t tok = new_token_t();
     
     set_tok_val(&tok, token_id);
     set_str_val(&tok, str);
-    push_to_gen_stack(tokens, &tok, TOKEN_T);
+    push_to_gen_stack(tokens_node, &tok, TOKEN_T);
 }
 
-void tokenize(char *str)
+gen_stack_t *tokenize(char *str)
 {
     if (!str)
     {
-        return;
+        return NULL;
     }
 
     const char  *list_of_ops = "%%^=-+*\\/<>";
 
-    gen_stack_t    *tokens = NULL;
-    gen_stack_t *head_node = NULL;
+    gen_stack_t *tokens_node = NULL;
+    gen_stack_t   *head_node = NULL;
 
-    char    *token = NULL;
-    bool loop_flag = true;
+    char *token_name = NULL;
+    bool   loop_flag = true;
+    bool  value_flag = true;
 
     while (loop_flag)
     {
         char curr = *str;
         str++;
 
+        // If it is either an alpabetical or numerical character, then proceed back to the  
+        // beginning of the loop. Otherwise, it will be turned into a string from the stack
+        // and the current character will be classified.
+
         if (isalpha(curr) || isdigit(curr))
         {
+            if (value_flag && isalpha(curr))
+            {
+                value_flag = false;
+            }
+
             push_to_gen_stack(&head_node, &curr, UINT8_T);
             continue;
         }
-            
-        to_string(&head_node, &token);
+        
+        to_string(&head_node, &token_name);
 
-        if (token)
+        if (token_name)
         {
-            uint8_t tmp = (is_keyword(token)) ? KEYWORD : IDENTIFIER;
-            token_push(&tokens, token, tmp);
+            uint8_t tmp;
 
-            free(token);
-            token = NULL;
+            if (is_keyword(token_name))
+            {
+                tmp = KEYWORD;
+            }
+            else if (value_flag)
+            {
+                tmp = VALUE;
+            }
+            else
+            {
+                tmp = IDENTIFIER;
+            }
+
+            token_push(&tokens_node, token_name, tmp);
+            value_flag = true;
+
+            free(token_name);
+            token_name = NULL;
         }
         
         switch (curr)
         {
             case  '(':
-                token_push(&tokens, "(", LEFT_PAREN);
+                token_push(&tokens_node, "(", LEFT_PAREN);
                 break;
             case  ')':
-                token_push(&tokens, ")", RIGHT_PAREN);
+                token_push(&tokens_node, ")", RIGHT_PAREN);
                 break;
             case  '=':
-                token_push(&tokens, "=", EQUAL);
+                token_push(&tokens_node, "=", EQUAL);
                 break;
             case  ',':
-                token_push(&tokens, ",", COMMA);
+                token_push(&tokens_node, ",", COMMA);
                 break;
             case  ' ':
                 break;
@@ -465,13 +487,13 @@ void tokenize(char *str)
                 break;
             default:
                 char tmp[1] = {curr};
-                token_push(&tokens, tmp, strchr(list_of_ops, curr) ? OPERATOR : NA);
+                token_push(&tokens_node, tmp, strchr(list_of_ops, curr) ? OPERATOR : NA);
                 break;
         }
     }
 
     free_gen_stack(&head_node);
-    free_gen_stack(&tokens);
+    return tokens_node;
 }
 
 int main(void)
@@ -483,7 +505,16 @@ int main(void)
     {
         printf("andy> ");
         char *resp = get_stdin(&head_node);
-        tokenize(resp);
+        gen_stack_t *tokens_node = tokenize(resp);
+
+        while (tokens_node)
+        {
+            token_t tmp;
+            pop_one_gen_stack(&tokens_node, &tmp, TOKEN_T);
+            print_token_t(&tmp);
+            free_token_t(&tmp);
+        }
+
         quit_flag = resp && (strcmp(resp, "quit") == 0);
         free(resp);
     }
@@ -493,10 +524,10 @@ int main(void)
 }
 
 /*
-    while (tokens)
+    while (tokens_node)
     {
         token_t tmp;
-        pop_one_gen_stack(&tokens, &tmp, TOKEN_T);
+        pop_one_gen_stack(&tokens_node, &tmp, TOKEN_T);
         print_token_t(&tmp);
         free_token_t(&tmp);
     }
