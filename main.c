@@ -12,13 +12,17 @@ enum token_id
     IDENTIFIER  = 0,
     KEYWORD     = 1,
     EQUAL       = 2,
-    LEFT_PAREN  = 3,
-    RIGHT_PAREN = 4,
-    OPERATOR    = 5,
-    COMMA       = 6,
-    WHITESPACE  = 7,
-    VALUE       = 8,
-    NA          = 9
+    LEFT_ROUND  = 3,
+    RIGHT_ROUND = 4,
+    LEFT_CURLY  = 5,
+    RIGHT_CURLY = 6,
+    OPERATOR    = 7,
+    COMMA       = 8,
+    WHITESPACE  = 9,
+    VALUE       = 10,
+    QUOTE       = 11,
+    DOLLAR      = 12,
+    NA          = 13
 };
 
 typedef struct token token_t;
@@ -94,11 +98,17 @@ void print_token_t(token_t *tok_ptr)
         case EQUAL:
             printf("EQUAL,%s\n", tok_ptr->str_val);
             break;
-        case LEFT_PAREN:
-            printf("LEFT_PAREN,%s\n", tok_ptr->str_val);
+        case LEFT_ROUND:
+            printf("LEFT_ROUND,%s\n", tok_ptr->str_val);
             break;
-        case RIGHT_PAREN:
-            printf("RIGHT_PAREN,%s\n", tok_ptr->str_val);
+        case RIGHT_ROUND:
+            printf("RIGHT_ROUND,%s\n", tok_ptr->str_val);
+            break;
+        case LEFT_CURLY:
+            printf("LEFT_CURLY,%s\n", tok_ptr->str_val);
+            break;
+        case RIGHT_CURLY:
+            printf("RIGHT_CURLY,%s\n", tok_ptr->str_val);
             break;
         case OPERATOR:
             printf("OPERATOR,%s\n", tok_ptr->str_val);
@@ -111,6 +121,12 @@ void print_token_t(token_t *tok_ptr)
             break;
         case VALUE:
             printf("VALUE,%s\n", tok_ptr->str_val);
+            break;
+        case QUOTE:
+            printf("QUOTE,%s\n", tok_ptr->str_val);
+            break;
+        case DOLLAR:
+            printf("DOLLAR,%s\n", tok_ptr->str_val);
             break;
         case NA:
             printf("NA,%s\n", tok_ptr->str_val);
@@ -391,17 +407,13 @@ bool is_digit(char *r_str)
         {
             result = false;
         }
-        else if (*r_str == '.' && 
-                 !pt_flag)
+        else if (*r_str == '.' && !pt_flag)
         {
-            pt_flag = true;
             result = !(*(r_str + 1) == 0);
+            pt_flag = true;
         }
-        else if (*r_str == 'e' && 
-                 !ex_flag)
-        {
-            ex_flag = true;
-            
+        else if (*r_str == 'e' && !ex_flag)
+        {   
             if (*(r_str + 1) == '-' || 
                 *(r_str + 1) == '+')
             {
@@ -409,6 +421,7 @@ bool is_digit(char *r_str)
             } 
             
             result = !(*(r_str + 1) == 0);
+            ex_flag = true;
         }
         
         r_str++;
@@ -477,7 +490,6 @@ gen_stack_t *tokenize(char *str)
 
     char *token_name = NULL;
     bool   loop_flag = true;
-    bool  value_flag = true;
 
     while (loop_flag)
     {
@@ -490,11 +502,6 @@ gen_stack_t *tokenize(char *str)
 
         if (isalpha(curr) || isdigit(curr))
         {
-            if (value_flag && isalpha(curr))
-            {
-                value_flag = false;
-            }
-
             push_to_gen_stack(&head_node, &curr, UINT8_T);
             continue;
         }
@@ -503,6 +510,7 @@ gen_stack_t *tokenize(char *str)
 
         if (token_name)
         {
+            bool  value_flag = is_digit(token_name);
             uint8_t tmp;
 
             if (is_keyword(token_name))
@@ -528,16 +536,28 @@ gen_stack_t *tokenize(char *str)
         switch (curr)
         {
             case  '(':
-                token_push(&tokens_node, "(", LEFT_PAREN);
+                token_push(&tokens_node, "(", LEFT_ROUND);
                 break;
             case  ')':
-                token_push(&tokens_node, ")", RIGHT_PAREN);
+                token_push(&tokens_node, ")", RIGHT_ROUND);
+                break;
+            case  '{':
+                token_push(&tokens_node, "{", LEFT_CURLY);
+                break;
+            case  '}':
+                token_push(&tokens_node, "}", RIGHT_CURLY);
                 break;
             case  '=':
                 token_push(&tokens_node, "=", EQUAL);
                 break;
             case  ',':
                 token_push(&tokens_node, ",", COMMA);
+                break;
+            case  '"':
+                token_push(&tokens_node, "\"", QUOTE);
+                break;
+            case  '$':
+                token_push(&tokens_node, "$", DOLLAR);
                 break;
             case  ' ':
                 break;
